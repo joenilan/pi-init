@@ -1,0 +1,36 @@
+{
+  "name": "pi-init",
+  "version": "1.0.0",
+  "description": "Generates a typed AGENTS.md for your project — /init, /init research, /init debug, /init code",
+  "license": "MIT",
+  "author": "DreadedZombie",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DreadedZombie/pi-init.git"
+  },
+  "homepage": "https://github.com/DreadedZombie/pi-init#readme",
+  "keywords": [
+    "pi",
+    "pi-coding-agent",
+    "pi-extension",
+    "pi-package",
+    "agents",
+    "agents-md",
+    "init",
+    "scaffold",
+    "research",
+    "debug"
+  ],
+  "files": [
+    "src/",
+    "README.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "*"
+  }
+}
