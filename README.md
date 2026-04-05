@@ -1,6 +1,6 @@
 # pi-init
 
-Adds `/init` to [Pi](https://pi.dev/) — generates a typed AGENTS.md in your current project directory.
+Adds `/init` to [Pi](https://pi.dev/) — generates or updates an AGENTS.md in your current project directory.
 
 ## Install
 
@@ -8,22 +8,23 @@ Adds `/init` to [Pi](https://pi.dev/) — generates a typed AGENTS.md in your cu
 pi install https://github.com/joenilan/pi-init
 ```
 
-That's it. Pi clones the repo and loads the extension automatically on next start.
+Pi clones the repo and loads the extension automatically on next start.
 
 ## Usage
 
 ```
-/init              General project (architecture, build, conventions)
+/init              Explore-first project analysis → AGENTS.md
 /init code         Same as bare /init
-/init research     Research protocol with findings tracking
-/init debug        Debug protocol — picks up research findings if you ran /init research first
+/init research     Research protocol with incremental findings tracking
+/init debug        Debug protocol — carries forward research findings automatically
 ```
 
 ## What each type does
 
-**`/init` / `/init code`** — Writes a template with sections for architecture, build/run
-commands, conventions, key files, and what to avoid. Pi fills these in by reading the
-project after you ask it to.
+**`/init` / `/init code`** — Pi explores the project first (reads package.json, scans
+structure, reads key source files, checks for `.cursorrules`/`CLAUDE.md`), then writes
+a filled-in AGENTS.md. If AGENTS.md already has content, running `/init` again flags it
+for update — Pi re-explores and refreshes stale sections without wiping human-authored notes.
 
 **`/init research`** — Writes a research protocol: minimum source count, citation
 requirements, when to use Playwright vs fetch, sequential-thinking for multi-step
@@ -39,12 +40,11 @@ automatically — Pi reads those files at step 1 before touching any code.
 
 ```
 /init research        # set up research protocol
-# ask Pi to research your topic
-# Pi saves findings to research/*.md and links them in AGENTS.md
+# describe your topic — Pi searches, reads sources, saves to research/*.md
 
 /init debug           # switch to debug — research findings carry forward automatically
 # Pi reads linked research files before starting any investigation
 ```
 
-The colony also benefits — Pi colony agents read AGENTS.md from the working directory
-on every action, so they see the research findings and debug context the same way.
+Colony agents read AGENTS.md from the working directory on every action, so they see
+research findings and debug context the same way a single-agent session does.

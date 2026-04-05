@@ -1,12 +1,12 @@
 /**
  * pi-init — /init slash command
  *
- * Generates a typed AGENTS.md in the current working directory.
+ * Generates or updates an AGENTS.md in the current working directory.
  *
  * Usage:
- *   /init              Full project read → general AGENTS.md (architecture, build, conventions)
- *   /init code         Same as bare /init — implementation focus
- *   /init research     Research protocol with findings tracking → saves to research/ dir
+ *   /init              Explore-first project analysis → AGENTS.md
+ *   /init code         Same as bare /init
+ *   /init research     Research protocol with incremental findings tracking
  *   /init debug        Debug protocol — carries forward Research Findings from prior /init research
  */
 
@@ -18,31 +18,47 @@ import * as path from "node:path";
 
 const TEMPLATE_CODE = `# Project Agent
 
-## Architecture
-<!-- Pi: read this directory and describe the overall structure, main entry points, and how the pieces connect -->
+<!-- Pi: before writing anything, explore this project:
+  1. Read package.json / pyproject.toml / Cargo.toml / go.mod — identify stack and versions
+  2. Scan directory structure: rg --files | head -60
+  3. Read 3-5 key source files to understand patterns and conventions
+  4. Check for .cursorrules, CLAUDE.md, .eslintrc, prettier.config — existing AI/style config
+  Then fill in each section below based on what you actually find.
+  Adapt or add sections if the project has unique needs.
+-->
 
-## Build & Run
-\`\`\`
-# Pi: fill in the actual commands after reading package.json / Makefile / pyproject.toml / etc.
-build:
-test:
-run:
-\`\`\`
+**Generated:** <!-- Pi: insert today's date (YYYY-MM-DD) -->
+
+## Stack
+<!-- Pi: languages, frameworks, key libraries and their versions -->
+
+## Structure
+<!-- Pi: key directories and what each contains — a mental map, not a full file list -->
+
+## Commands
+| Action  | Command |
+|---------|---------|
+| Install |         |
+| Build   |         |
+| Test    |         |
+| Run     |         |
 
 ## Conventions
-<!-- Pi: describe the coding style, patterns already in use, naming conventions, and what to follow -->
+<!-- Pi: coding style, patterns in use, formatter/linter config, naming conventions -->
 
 ## Key Files
-<!-- Pi: list the most important files and what each one does -->
+<!-- Pi: the 5-10 most important files and what each one does -->
 
 ## What to Avoid
-<!-- Pi: note any patterns, approaches, or changes that would break things or go against project style -->
+<!-- Pi: patterns or changes that would break things or go against project style -->
 
 ## Notes
-<!-- Pi: anything else a new agent should know before touching this codebase -->
+<!-- Pi: existing AI config files (.cursorrules, CLAUDE.md), gotchas, constraints, anything a new agent must know -->
 `;
 
 const TEMPLATE_RESEARCH = `# Research Agent
+
+**Started:** <!-- Pi: insert today's date (YYYY-MM-DD) -->
 
 ## Search Protocol
 - Run at least **4 distinct queries** approaching the topic from different angles before drawing conclusions
@@ -119,6 +135,17 @@ const TEMPLATE_DEBUG = `# Debug Agent
 - Confirm before deleting files, dropping data, or resetting state
 `;
 
+// Prepended to existing AGENTS.md when /init code is run on a project that already has one
+const UPDATE_BANNER = `<!-- Pi: UPDATE MODE
+This AGENTS.md was generated in a prior session. Your job:
+1. Re-explore the project (rg --files, re-read key source files)
+2. Check for new or changed .cursorrules, CLAUDE.md, or other AI config files
+3. Update every section below with fresh findings — fix stale info, fill gaps
+4. Preserve any human-authored notes that don't conflict with current reality
+-->
+
+`;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 type InitType = "code" | "research" | "debug";
@@ -130,14 +157,6 @@ function parseType(args: string): InitType {
   return "code";
 }
 
-function getTemplate(type: InitType): string {
-  switch (type) {
-    case "research": return TEMPLATE_RESEARCH;
-    case "debug":    return TEMPLATE_DEBUG;
-    default:         return TEMPLATE_CODE;
-  }
-}
-
 function getFollowUp(type: InitType): string {
   switch (type) {
     case "research":
@@ -145,8 +164,17 @@ function getFollowUp(type: InitType): string {
     case "debug":
       return "AGENTS.md written with the debug protocol. Ask Pi to read this directory and fill in the Current State section before starting any investigation.";
     default:
-      return "AGENTS.md written. Ask Pi to read this project and fill in the architecture, build commands, conventions, and key files sections.";
+      return "AGENTS.md written. Ask Pi to explore this project and fill in all sections — it will read the codebase first, then generate.";
   }
+}
+
+/**
+ * Returns true if the file has meaningful filled-in content beyond placeholders.
+ */
+function hasFilledContent(content: string): boolean {
+  const withoutComments = content.replace(/<!--[\s\S]*?-->/g, "").trim();
+  const withoutHeaders = withoutComments.replace(/^#+.*$/gm, "").replace(/^\*\*Generated:?\*\*.*$/gm, "").trim();
+  return withoutHeaders.length > 80;
 }
 
 /**
@@ -157,7 +185,6 @@ function extractResearchFindings(content: string): string {
   const m = content.match(/^## Research Findings\n([\s\S]*?)(?=\n## |\n# |$)/m);
   if (!m) return "";
   const body = m[1].trim();
-  // Skip if it's only the placeholder comment block
   if (body.startsWith("<!--") && body.endsWith("-->")) return "";
   return body;
 }
@@ -176,27 +203,37 @@ function buildDebugWithFindings(findings: string): string {
 
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("init", {
-    description: "Generate an AGENTS.md for this project. Usage: /init [code|research|debug]",
+    description: "Generate or update an AGENTS.md for this project. Usage: /init [code|research|debug]",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       const type = parseType(args);
       const cwd: string = ctx.cwd ?? process.cwd();
       const dest = path.join(cwd, "AGENTS.md");
+      const exists = fs.existsSync(dest);
 
-      // Debug: carry forward Research Findings from a prior research session
-      if (type === "debug" && fs.existsSync(dest)) {
+      // ── Debug: carry forward Research Findings from a prior research session ──
+      if (type === "debug" && exists) {
         const existing = fs.readFileSync(dest, "utf8");
         const findings = extractResearchFindings(existing);
         if (findings) {
-          const content = buildDebugWithFindings(findings);
-          fs.writeFileSync(dest, content, "utf8");
+          fs.writeFileSync(dest, buildDebugWithFindings(findings), "utf8");
           ctx.ui.notify(`[pi-init] AGENTS.md switched to debug protocol — research findings carried forward`, "info");
           ctx.ui.notify(getFollowUp("debug"), "info");
           return;
         }
       }
 
-      // Warn if AGENTS.md already exists (and we're not doing the carry-forward path)
-      if (fs.existsSync(dest)) {
+      // ── Code: update mode if AGENTS.md has real content (no overwrite prompt) ──
+      if (type === "code" && exists) {
+        const existing = fs.readFileSync(dest, "utf8");
+        if (hasFilledContent(existing)) {
+          fs.writeFileSync(dest, UPDATE_BANNER + existing, "utf8");
+          ctx.ui.notify(`[pi-init] AGENTS.md flagged for update — ask Pi to re-explore and refresh all sections`, "info");
+          return;
+        }
+      }
+
+      // ── All other cases: confirm overwrite if file exists ──
+      if (exists) {
         const overwrite = await ctx.ui.confirm(
           `AGENTS.md already exists in:\n${cwd}`,
           "Overwrite it?"
@@ -207,15 +244,12 @@ export default function (pi: ExtensionAPI) {
         }
       }
 
-      const content = getTemplate(type);
+      const content = type === "research" ? TEMPLATE_RESEARCH
+                    : type === "debug"    ? TEMPLATE_DEBUG
+                    :                       TEMPLATE_CODE;
+
       fs.writeFileSync(dest, content, "utf8");
-
-      const typeLabel = type === "code" ? "code" : type;
-      ctx.ui.notify(
-        `[pi-init] AGENTS.md (${typeLabel}) written to ${cwd}`,
-        "info"
-      );
-
+      ctx.ui.notify(`[pi-init] AGENTS.md (${type}) written to ${cwd}`, "info");
       ctx.ui.notify(getFollowUp(type), "info");
     },
   });
