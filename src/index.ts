@@ -10,7 +10,7 @@
  *   /init debug        Investigative protocol + prompts Pi to document the broken state
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -143,7 +143,7 @@ function getFollowUp(type: InitType): string {
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("init", {
     description: "Generate an AGENTS.md for this project. Usage: /init [code|research|debug]",
-    handler: async (args: string, ctx: any) => {
+    handler: async (args: string, ctx: ExtensionCommandContext) => {
       const type = parseType(args);
       const cwd: string = ctx.cwd ?? process.cwd();
       const dest = path.join(cwd, "AGENTS.md");
