@@ -60,12 +60,18 @@ const TEMPLATE_RESEARCH = `# Research Agent
 
 **Started:** <!-- Pi: insert today's date (YYYY-MM-DD) -->
 
+## Output Rule — Files First, Chat Second
+**Do NOT summarize findings in chat.** Every finding goes into a file in \`research/\`.
+- After completing each topic: write \`research/<topic>.md\`, then update Research Findings below
+- Do this incrementally — one file per topic as you finish it, not all at once at the end
+- Only after all files are written and Research Findings is updated should you respond in chat
+- The goal is a handoff document set for the next agent — not a conversation
+
 ## Search Protocol
 - Run at least **4 distinct queries** approaching the topic from different angles before drawing conclusions
 - Read the **full content** of at least 6 sources — not just summaries or snippets
 - For JS-heavy or dynamically rendered pages where \`fetch\` returns sparse HTML, use **Playwright** to render and extract
 - Cross-reference findings across sources before responding
-- Do **not** respond until you have read multiple sources and built a complete picture
 
 ## Source Quality Standards
 - Prefer primary sources: official documentation, research papers, original announcements
@@ -78,9 +84,18 @@ const TEMPLATE_RESEARCH = `# Research Agent
 2. **Dive** — read the full content of the 5-6 most relevant sources
 3. **Cross-reference** — identify what sources agree and disagree on
 4. **Synthesize** — build a coherent picture with citations
-5. **Save** — write findings to \`research/<topic>.md\`, one file per topic or question
-6. **Update** — add each saved file to the Research Findings section below with a one-line summary
-7. **Gaps** — explicitly note what you could not find or verify
+5. **Write** — save to \`research/<topic>.md\` with full detail, citations, code snippets, and gaps
+6. **Update AGENTS.md** — add the file to Research Findings below, one line per file
+7. Repeat steps 1-6 for each sub-topic before moving on
+
+## research/<topic>.md format
+Each file should contain:
+- **What was found** — detailed findings with citations (URLs)
+- **Key facts** — bullet list of the most important discoveries
+- **Conflicts** — where sources disagreed and which is more credible
+- **Code / config** — any relevant snippets, commands, or configuration found
+- **Gaps** — what could not be found or verified
+- **Next steps** — what a follow-up agent should investigate or try
 
 ## Tools
 - \`searxng\` — start here for all searches (private, no tracking)
@@ -91,9 +106,9 @@ const TEMPLATE_RESEARCH = `# Research Agent
 - \`pi-docparser\` — for PDFs, papers, Word docs, spreadsheets
 
 ## Research Findings
-<!-- Pi: as you complete each topic, save findings to research/<topic>.md and add a line here:
+<!-- Pi: after writing each research/<topic>.md, add a line here immediately:
      - [Topic title](research/filename.md) — one-line summary of what was found
-     Update this section incrementally — do not wait until the end. -->
+     Do not wait until the end. Update this section after every file written. -->
 `;
 
 const TEMPLATE_DEBUG = `# Debug Agent
