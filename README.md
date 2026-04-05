@@ -5,10 +5,14 @@ Adds `/init` to [Pi](https://pi.dev/) — generates or updates an AGENTS.md in y
 ## Install
 
 ```bash
+# via npm (recommended)
+pi install npm:@dreadedzombie/pi-init
+
+# via GitHub
 pi install https://github.com/joenilan/pi-init
 ```
 
-Pi clones the repo and loads the extension automatically on next start.
+Pi loads the extension automatically on next start.
 
 ## Usage
 
