@@ -60,10 +60,6 @@ const TEMPLATE_RESEARCH = `# Research Agent
 
 **Started:** <!-- Pi: insert today's date (YYYY-MM-DD) -->
 
-## FIRST ACTION — Before anything else
-Create the \`research/\` directory and write \`research/plan.md\` listing the topics you will investigate.
-Do this before any searching or reading. This is not optional.
-
 ## Output Rule — Files Before Chat
 **Never summarize findings in chat.** Every finding goes into a file.
 - Create \`research/<topic>.md\` as you complete each topic — not at the end
@@ -269,6 +265,18 @@ export default function (pi: ExtensionAPI) {
                     :                       TEMPLATE_CODE;
 
       fs.writeFileSync(dest, content, "utf8");
+
+      // ── Research: scaffold research/ dir and plan.md so Pi fills in existing files ──
+      if (type === "research") {
+        const researchDir = path.join(cwd, "research");
+        if (!fs.existsSync(researchDir)) fs.mkdirSync(researchDir);
+        const planPath = path.join(researchDir, "plan.md");
+        if (!fs.existsSync(planPath)) {
+          fs.writeFileSync(planPath, `# Research Plan\n\n## Topic\n<!-- What are we researching? -->\n\n## Sub-topics to investigate\n<!-- Pi: list each angle you will cover, one per line. Write a <topic>.md file for each. -->\n\n## Key questions to answer\n<!-- Pi: what specific questions must be answered by the end of this session? -->\n\n## Known starting points\n<!-- Pi: any URLs, files, or repos already identified as relevant -->\n`, "utf8");
+        }
+        ctx.ui.notify(`[pi-init] research/plan.md created — Pi will fill this in before searching`, "info");
+      }
+
       ctx.ui.notify(`[pi-init] AGENTS.md (${type}) written to ${cwd}`, "info");
       ctx.ui.notify(getFollowUp(type), "info");
     },
