@@ -6,8 +6,8 @@
  * Usage:
  *   /init              Full project read → general AGENTS.md (architecture, build, conventions)
  *   /init code         Same as bare /init — implementation focus
- *   /init research     Research protocol (source depth, citation, tool usage)
- *   /init debug        Investigative protocol + prompts Pi to document the broken state
+ *   /init research     Research protocol with findings tracking → saves to research/ dir
+ *   /init debug        Debug protocol — carries forward Research Findings from prior /init research
  */
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
@@ -61,8 +61,10 @@ const TEMPLATE_RESEARCH = `# Research Agent
 1. **Map** — 3-4 broad queries to understand the landscape and identify the key sources
 2. **Dive** — read the full content of the 5-6 most relevant sources
 3. **Cross-reference** — identify what sources agree and disagree on
-4. **Synthesize** — build a complete, coherent picture with citations
-5. **Gaps** — explicitly note what you could not find or verify
+4. **Synthesize** — build a coherent picture with citations
+5. **Save** — write findings to \`research/<topic>.md\`, one file per topic or question
+6. **Update** — add each saved file to the Research Findings section below with a one-line summary
+7. **Gaps** — explicitly note what you could not find or verify
 
 ## Tools
 - \`searxng\` — start here for all searches (private, no tracking)
@@ -71,9 +73,17 @@ const TEMPLATE_RESEARCH = `# Research Agent
 - \`sequential-thinking\` — use when the research has multiple dependent steps or requires structured reasoning
 - \`memory\` — persist key findings across a long session so nothing gets lost to context limits
 - \`pi-docparser\` — for PDFs, papers, Word docs, spreadsheets
+
+## Research Findings
+<!-- Pi: as you complete each topic, save findings to research/<topic>.md and add a line here:
+     - [Topic title](research/filename.md) — one-line summary of what was found
+     Update this section incrementally — do not wait until the end. -->
 `;
 
 const TEMPLATE_DEBUG = `# Debug Agent
+
+## Research Findings
+<!-- Pi: read every file linked here before starting investigation — prior research is your context -->
 
 ## Investigative Stance
 - **Never assume** — verify everything against logs, actual code, and runtime behavior
@@ -87,11 +97,12 @@ const TEMPLATE_DEBUG = `# Debug Agent
 - Identify whether the issue is: **configuration**, **code logic**, **dependencies**, **environment**, or **data**
 
 ## Investigation Order
-1. Read all available logs — error, build, runtime, access
-2. Trace the startup / execution sequence from the entry point
-3. Check dependency versions and compatibility
-4. Verify environment variables and configuration files
-5. Isolate the **earliest** point of failure — fixes belong there, not downstream
+1. Read all Research Findings files linked above — prior research changes what you look for
+2. Read all available logs — error, build, runtime, access
+3. Trace the startup / execution sequence from the entry point
+4. Check dependency versions and compatibility
+5. Verify environment variables and configuration files
+6. Isolate the **earliest** point of failure — fixes belong there, not downstream
 
 ## Current State
 <!-- Pi: read this directory now and fill in:
@@ -130,12 +141,35 @@ function getTemplate(type: InitType): string {
 function getFollowUp(type: InitType): string {
   switch (type) {
     case "research":
-      return "AGENTS.md written with the research protocol. You're ready — just describe what you want to research and Pi will follow the protocol automatically.";
+      return "AGENTS.md written with the research protocol. Describe what you want to research — Pi will search, read sources, save findings to research/ files, and update the Research Findings section as it goes.";
     case "debug":
-      return "AGENTS.md written with the debug protocol. Now ask Pi to read this directory and fill in the Current State section — it will map the broken state before starting any investigation.";
+      return "AGENTS.md written with the debug protocol. Ask Pi to read this directory and fill in the Current State section before starting any investigation.";
     default:
-      return "AGENTS.md written. Now ask Pi to read this project and fill in the architecture, build commands, conventions, and key files sections.";
+      return "AGENTS.md written. Ask Pi to read this project and fill in the architecture, build commands, conventions, and key files sections.";
   }
+}
+
+/**
+ * Extracts the body of the ## Research Findings section from an existing AGENTS.md.
+ * Returns empty string if section is missing or contains only the placeholder comment.
+ */
+function extractResearchFindings(content: string): string {
+  const m = content.match(/^## Research Findings\n([\s\S]*?)(?=\n## |\n# |$)/m);
+  if (!m) return "";
+  const body = m[1].trim();
+  // Skip if it's only the placeholder comment block
+  if (body.startsWith("<!--") && body.endsWith("-->")) return "";
+  return body;
+}
+
+/**
+ * Injects research findings into the debug template, replacing the placeholder comment.
+ */
+function buildDebugWithFindings(findings: string): string {
+  return TEMPLATE_DEBUG.replace(
+    "<!-- Pi: read every file linked here before starting investigation — prior research is your context -->",
+    findings
+  );
 }
 
 // ─── Extension entry ──────────────────────────────────────────────────────────
@@ -148,7 +182,20 @@ export default function (pi: ExtensionAPI) {
       const cwd: string = ctx.cwd ?? process.cwd();
       const dest = path.join(cwd, "AGENTS.md");
 
-      // Warn if AGENTS.md already exists
+      // Debug: carry forward Research Findings from a prior research session
+      if (type === "debug" && fs.existsSync(dest)) {
+        const existing = fs.readFileSync(dest, "utf8");
+        const findings = extractResearchFindings(existing);
+        if (findings) {
+          const content = buildDebugWithFindings(findings);
+          fs.writeFileSync(dest, content, "utf8");
+          ctx.ui.notify(`[pi-init] AGENTS.md switched to debug protocol — research findings carried forward`, "info");
+          ctx.ui.notify(getFollowUp("debug"), "info");
+          return;
+        }
+      }
+
+      // Warn if AGENTS.md already exists (and we're not doing the carry-forward path)
       if (fs.existsSync(dest)) {
         const overwrite = await ctx.ui.confirm(
           `AGENTS.md already exists in:\n${cwd}`,
@@ -169,7 +216,6 @@ export default function (pi: ExtensionAPI) {
         "info"
       );
 
-      // Surface the follow-up instruction as a visible message
       ctx.ui.notify(getFollowUp(type), "info");
     },
   });
