@@ -18,6 +18,9 @@ import * as path from "node:path";
 
 const TEMPLATE_CODE = `# Project Agent
 
+**Workspace Path:** \`{{CWD}}\`
+*(Note to Pi: Your file write/edit tools run in a different directory by default. You MUST use absolute paths starting with the Workspace Path above for ALL file operations!)*
+
 <!-- Pi: before writing anything, explore this project:
   1. Read package.json / pyproject.toml / Cargo.toml / go.mod — identify stack and versions
   2. Scan directory structure: rg --files | head -60
@@ -58,11 +61,14 @@ const TEMPLATE_CODE = `# Project Agent
 
 const TEMPLATE_RESEARCH = `# Research Agent
 
+**Workspace Path:** \`{{CWD}}\`
+*(Note to Pi: Your file write/edit tools run in a different directory by default. You MUST use absolute paths starting with the Workspace Path above for ALL file operations!)*
+
 **Started:** <!-- Pi: insert today's date (YYYY-MM-DD) -->
 
 ## Output Rule — Files Before Chat
 **Never summarize findings in chat.** Every finding goes into a file.
-- Create \`research/<topic>.md\` as you complete each topic — not at the end
+- Create \`{{CWD}}/research/<topic>.md\` as you complete each topic — not at the end
 - Update the Research Findings section in this file after writing each doc
 - Chat response comes last, only to say what files were written and what to do next
 - **If you are about to type a finding into chat — stop. Write it to a file instead.**
@@ -85,7 +91,7 @@ const TEMPLATE_RESEARCH = `# Research Agent
 2. **Dive** — read the full content of the 5-6 most relevant sources
 3. **Cross-reference** — identify what sources agree and disagree on
 4. **Synthesize** — build a coherent picture with citations
-5. **Write** — save to \`research/<topic>.md\` with full detail, citations, code snippets, and gaps
+5. **Write** — save to \`{{CWD}}/research/<topic>.md\` with full detail, citations, code snippets, and gaps
 6. **Update AGENTS.md** — add the file to Research Findings below, one line per file
 7. Repeat steps 1-6 for each sub-topic before moving on
 
@@ -107,12 +113,15 @@ Each file should contain:
 - \`pi-docparser\` — for PDFs, papers, Word docs, spreadsheets
 
 ## Research Findings
-<!-- Pi: after writing each research/<topic>.md, add a line here immediately:
+<!-- Pi: after writing each {{CWD}}/research/<topic>.md, add a line here immediately:
      - [Topic title](research/filename.md) — one-line summary of what was found
      Do not wait until the end. Update this section after every file written. -->
 `;
 
 const TEMPLATE_DEBUG = `# Debug Agent
+
+**Workspace Path:** \`{{CWD}}\`
+*(Note to Pi: Your file write/edit tools run in a different directory by default. You MUST use absolute paths starting with the Workspace Path above for ALL file operations!)*
 
 ## Research Findings
 <!-- Pi: read every file linked here before starting investigation — prior research is your context -->
@@ -260,9 +269,13 @@ export default function (pi: ExtensionAPI) {
         }
       }
 
-      const content = type === "research" ? TEMPLATE_RESEARCH
+      let content = type === "research" ? TEMPLATE_RESEARCH
                     : type === "debug"    ? TEMPLATE_DEBUG
                     :                       TEMPLATE_CODE;
+
+      // Ensure paths are absolute and formatted correctly for the LLM
+      const absoluteCwd = cwd.replace(/\\/g, "/");
+      content = content.replace(/\{\{CWD\}\}/g, absoluteCwd);
 
       fs.writeFileSync(dest, content, "utf8");
 

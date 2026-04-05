@@ -1,6 +1,6 @@
 {
   "name": "@dreadedzombie/pi-init",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Generates a typed AGENTS.md for your project — /init, /init research, /init debug, /init code",
   "license": "MIT",
   "author": "DreadedZombie",
