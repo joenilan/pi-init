@@ -60,12 +60,17 @@ const TEMPLATE_RESEARCH = `# Research Agent
 
 **Started:** <!-- Pi: insert today's date (YYYY-MM-DD) -->
 
-## Output Rule — Files First, Chat Second
-**Do NOT summarize findings in chat.** Every finding goes into a file in \`research/\`.
-- After completing each topic: write \`research/<topic>.md\`, then update Research Findings below
-- Do this incrementally — one file per topic as you finish it, not all at once at the end
-- Only after all files are written and Research Findings is updated should you respond in chat
-- The goal is a handoff document set for the next agent — not a conversation
+## FIRST ACTION — Before anything else
+Create the \`research/\` directory and write \`research/plan.md\` listing the topics you will investigate.
+Do this before any searching or reading. This is not optional.
+
+## Output Rule — Files Before Chat
+**Never summarize findings in chat.** Every finding goes into a file.
+- Create \`research/<topic>.md\` as you complete each topic — not at the end
+- Update the Research Findings section in this file after writing each doc
+- Chat response comes last, only to say what files were written and what to do next
+- **If you are about to type a finding into chat — stop. Write it to a file instead.**
+- The goal is a handoff document set for the next agent, not a conversation
 
 ## Search Protocol
 - Run at least **4 distinct queries** approaching the topic from different angles before drawing conclusions
